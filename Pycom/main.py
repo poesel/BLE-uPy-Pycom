@@ -26,22 +26,55 @@ if not bluetooth.isscanning():
                 services = conn.services()
                 for service in services:
                     time.sleep(0.050)
-                    if service.uuid() == 0x180f: 
+                    print('Service: ',service.uuid())
+                    print('Chars: ',service.characteristics())
+                    if service.uuid() == 0x180F0: 
                         print('Battery service')
                         chars = service.characteristics()
                         for char in chars:
                             if (char.properties() & Bluetooth.PROP_READ):
                                 print('char {} value = {}'.format(char.uuid(), char.read()))
                                 print('Battery level: ', struct.unpack('<b', char.value())[0])
-                    elif service.uuid() == 0x181d:
+                    elif service.uuid() == 0x181D0:
                         print('Weight scale')
                         chars = service.characteristics()
                         for char in chars:
                             if (char.properties() & Bluetooth.PROP_READ):
                                 print('char {} value = {}'.format(char.uuid(), char.read()))
                                 print('Weight: ', struct.unpack('<h', char.value())[0]*0.005)
-                    elif service.uuid() == 0x181a:
+                    elif service.uuid() == 0x181A0:
                         print('Environ Sensing')
+                        chars = service.characteristics()
+                        for char in chars:
+                            if (char.properties() & Bluetooth.PROP_READ):
+                                print('char {} value = {}'.format(char.uuid(), char.read()))
+                                if char.uuid() == 0x2A6F:  # humidity
+                                    print('Humidity: ', struct.unpack('<h', char.value())[0]*0.01)
+                                elif char.uuid() == 0x2A6E:    # temperature
+                                    print('Temperature: ', struct.unpack('<h', char.value())[0]*0.01)
+                    elif service.uuid() == '04500100-39fd-49ec-b565-b5d6dc31b6ae':
+                        print('Temp gap')
+                        chars = service.characteristics()
+                        for char in chars:
+                            if (char.properties() & Bluetooth.PROP_READ):
+                                print('char {} value = {}'.format(char.uuid(), char.read()))
+
+
+# Hiveeyes (HE) service for temperature sensors inside the brood box (TB)
+#_HE_TB_UUID = UUID('04500100-39fd-49ec-b565-b5d6dc31b6ae')
+# characteristics: 10 temperature sensors
+#_HE_TB_CHAR_T01 = (UUID('04500101-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T02 = (UUID('04500102-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T03 = (UUID('04500103-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T04 = (UUID('04500104-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T05 = (UUID('04500105-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T06 = (UUID('04500106-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T07 = (UUID('04500107-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T08 = (UUID('04500108-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T09 = (UUID('04500109-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+#_HE_TB_CHAR_T10 = (UUID('04500110-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+
+
                     #if type(service.uuid()) == bytes:
                     #    print('fReading chars from service = {}'.format(service.uuid()))
                     #else:

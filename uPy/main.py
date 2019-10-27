@@ -49,9 +49,26 @@ _CT_UUID = UUID(0x1805)
 _CT_CHAR = (UUID(0x2A00), FLAG_READ | FLAG_NOTIFY,)
 _CT_SERVICE = (_CT_UUID, (_CT_CHAR,), )
 
-#_ADV_SERVICES = (_WS_SERVICE, _BS_SERVICE, _ES_SERVICE, )
-_ADV_SERVICES = (_BS_SERVICE, _WS_SERVICE,)
+# Hiveeyes (HE) service for temperature sensors inside the brood box (TB)
+_HE_TB_UUID = UUID('04500100-39fd-49ec-b565-b5d6dc31b6ae')
+# characteristics: 10 temperature sensors
+_HE_TB_CHAR_T01 = (UUID('04500101-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T02 = (UUID('04500102-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T03 = (UUID('04500103-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T04 = (UUID('04500104-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T05 = (UUID('04500105-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T06 = (UUID('04500106-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T07 = (UUID('04500107-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T08 = (UUID('04500108-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T09 = (UUID('04500109-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+_HE_TB_CHAR_T10 = (UUID('04500110-39fd-49ec-b565-b5d6dc31b6ae'), FLAG_READ | FLAG_NOTIFY,)
+# servive list
+_HE_TB_SERVICE = (_HE_TB_UUID, (_HE_TB_CHAR_T01, _HE_TB_CHAR_T02, _HE_TB_CHAR_T03, _HE_TB_CHAR_T04, _HE_TB_CHAR_T05, _HE_TB_CHAR_T06, _HE_TB_CHAR_T07, _HE_TB_CHAR_T08, _HE_TB_CHAR_T09, _HE_TB_CHAR_T10, ), )
 
+# services you can get data from
+_SERVICES = (_BS_SERVICE, _WS_SERVICE,_ES_SERVICE,_HE_TB_SERVICE)
+# advertised services
+_ADV_SERVICES = [_BS_UUID,_WS_UUID,_ES_UUID,]
 # set appearance - sets the icon
 # org.bluetooth.characteristic.gap.appearance.xml
 _ADV_APPEARANCE_GENERIC_WEIGHT_SCALE = const(3200)
@@ -72,11 +89,14 @@ class BluetoothApiESP32:
         print('Starting BLE')
         self.start()    
         self._ble.irq(handler=self._irq)
-        #((self._WS_handle,),(self._BS_handle,),(self._ES_HUM_handle, self._ES_TEMP_handle,),) = self._ble.gatts_register_services(_ADV_SERVICES)
-        ((self._BS_handle,),(self._WS_handle,),) = self._ble.gatts_register_services(_ADV_SERVICES)
+        ((self._BS_handle,),(self._WS_handle,),(self._ES_HUM_handle, self._ES_TEMP_handle,), \
+            (self._TB_T01_handle, self._TB_T02_handle, self._TB_T03_handle, self._TB_T04_handle, \
+             self._TB_T05_handle, self._TB_T06_handle, self._TB_T07_handle, self._TB_T08_handle, \
+             self._TB_T09_handle, self._TB_T10_handle,) ,) \
+            = self._ble.gatts_register_services(_SERVICES)
         self._connections = set()
         # advertise that we are here and what services we provide
-        self._payload = advertising_payload(name=name, services=[_BS_UUID,_WS_UUID,_ES_UUID,], appearance=_ADV_APPEARANCE_GENERIC_WEIGHT_SCALE)
+        self._payload = advertising_payload(name=name, services=_ADV_SERVICES, appearance=_ADV_APPEARANCE_GENERIC_WEIGHT_SCALE)
         print('Start advertising')
         self._advertise()
 
@@ -136,7 +156,8 @@ class BluetoothApiESP32:
         Data is uint16. 
         Resolution: 0.01.
         """
-        self._ble.gatts_write(self._ES_HUM_handle, struct.pack('<H', int(humidity/0.01)))
+        self._ble.gatts_write(self._ES_HUM_handle, struct.pack('<h', int(humidity/0.01)))
+        print('  Write ES HUM: ', struct.pack('<h', int(humidity/0.01)))
         if notify:
             for conn_handle in self._connections:   # Notify connected centrals to issue a read.
                 self._ble.gatts_notify(conn_handle, self._ES_HUM_handle)
@@ -148,9 +169,51 @@ class BluetoothApiESP32:
         Resolution of 0.01.
         """
         self._ble.gatts_write(self._ES_TEMP_handle, struct.pack('<h', int(temperature/0.01)))
+        print('   Write ES TEMP: ', struct.pack('<h', int(temperature/0.01)))
         if notify:
             for conn_handle in self._connections:   # Notify connected centrals to issue a read.
                 self._ble.gatts_notify(conn_handle, self._ES_TEMP_handle)
+
+    def set_comb_gap_temperature(self, temperature_list=None, notify=False): 
+        """
+        temperature in [°C]
+        Data is sint16. 
+        Resolution of 0.01.
+        """
+        if temperature_list is None:
+            temperature_list = []
+        
+        for i in range(0, len(temperature_list)):
+            if i == 0:
+                self._ble.gatts_write(self._TB_T01_handle, struct.pack('<h', int(temperature_list[0]/0.01)))
+                print('    Write TB TEMP01: ', struct.pack('<h', int(temperature_list[0]/0.01)))
+            if i == 1:
+                self._ble.gatts_write(self._TB_T02_handle, struct.pack('<h', int(temperature_list[1]/0.01)))
+                print('    Write TB TEMP02: ', struct.pack('<h', int(temperature_list[1]/0.01)))
+            if i == 2:
+                self._ble.gatts_write(self._TB_T03_handle, struct.pack('<h', int(temperature_list[2]/0.01)))
+                print('    Write TB TEMP03: ', struct.pack('<h', int(temperature_list[2]/0.01)))
+            if i == 3:
+                self._ble.gatts_write(self._TB_T04_handle, struct.pack('<h', int(temperature_list[3]/0.01)))
+                print('    Write TB TEMP04: ', struct.pack('<h', int(temperature_list[3]/0.01)))
+            if i == 4:
+                self._ble.gatts_write(self._TB_T05_handle, struct.pack('<h', int(temperature_list[4]/0.01)))
+                print('    Write TB TEMP05: ', struct.pack('<h', int(temperature_list[4]/0.01)))
+            if i == 5:
+                self._ble.gatts_write(self._TB_T06_handle, struct.pack('<h', int(temperature_list[5]/0.01)))
+                print('    Write TB TEMP06: ', struct.pack('<h', int(temperature_list[5]/0.01)))
+            if i == 6:
+                self._ble.gatts_write(self._TB_T07_handle, struct.pack('<h', int(temperature_list[6]/0.01)))
+                print('    Write TB TEMP07: ', struct.pack('<h', int(temperature_list[6]/0.01)))
+            if i == 7:
+                self._ble.gatts_write(self._TB_T08_handle, struct.pack('<h', int(temperature_list[7]/0.01)))
+                print('    Write TB TEMP08: ', struct.pack('<h', int(temperature_list[7]/0.01)))
+            if i == 8:
+                self._ble.gatts_write(self._TB_T09_handle, struct.pack('<h', int(temperature_list[8]/0.01)))
+                print('    Write TB TEMP09: ', struct.pack('<h', int(temperature_list[8]/0.01)))
+            if i == 9:
+                self._ble.gatts_write(self._TB_T10_handle, struct.pack('<h', int(temperature_list[9]/0.01)))
+                print('    Write TB TEMP10: ', struct.pack('<h', int(temperature_list[9]/0.01)))
 
     def set_name(self, name='Hiveeyes', notify=False): 
         """
@@ -178,8 +241,9 @@ def demo():
 
     bat = 54
     kg = 32.1
-    hum = 60.0
-    temp = 25.1
+    hum = 65.4
+    temp = 23.4
+    temp_gap = [12.3,45.6]
 
     i = 0
 
@@ -187,17 +251,20 @@ def demo():
         # Write every second, notify every x seconds.
         i += 1
         if i % 3 == 0:
-            ble32.set_battery_level(int(bat), notify=True)
+            ble32.set_battery_level(int(bat), notify=False)
             print('bat: ',bat)
         if i % 5 == 0:    
-            ble32.set_weight(kg, notify=True)
+            ble32.set_weight(kg, notify=False)
             print(' kg: ',kg)
-        #if i % 7 == 0:
-        #    ble32.set_humidity(hum, notify=True)
-        #    print('  hum: ',hum)
-        #if i % 11 == 0:
-        #    ble32.set_temperature(temp, notify=True)
-        #    print('   temp: ',temp)
+        if i % 7 == 0:
+            ble32.set_humidity(hum, notify=False)
+            print('  hum: ',hum)
+        if i % 11 == 0:
+            ble32.set_temperature(temp, notify=False)
+            print('   temp: ',temp)
+        if i % 13 == 0:
+            ble32.set_comb_gap_temperature(temp_gap, notify=False)
+            print('    temp gap: ',temp)
 
         # Random walk 
         #bat += int(random.uniform(-1, 1))
