@@ -1,7 +1,14 @@
+# org.bluetooth.service.battery_service - BS_BS_INT = 0x180F
+# org.bluetooth.characteristic.battery_level_BS_CHAR = (UUID(0x2A19), FLAG_READ | FLAG_NOTIFY,)
+# org.bluetooth.service.weight_scale - WS_WS_INT = 0x181D
+# org.bluetooth.characteristic.weight_measurement_WS_CHAR = (UUID(0x2A9D), FLAG_READ | FLAG_NOTIFY,)
+# org.bluetooth.service.environmental_sensing - ES _ES_INT = 0x181A
+
 from network import Bluetooth
 import time
 import struct
 
+print('Create BT')
 bluetooth = Bluetooth()
 print('Scanning...')
 bluetooth.start_scan(2)    # start scanning with no timeout
@@ -13,21 +20,19 @@ if not bluetooth.isscanning():
         if name == 'HEN':
             mac = adv.mac
 
-# org.bluetooth.service.battery_service - BS_BS_INT = 0x180F
-# org.bluetooth.characteristic.battery_level_BS_CHAR = (UUID(0x2A19), FLAG_READ | FLAG_NOTIFY,)
-
-# org.bluetooth.service.weight_scale - WS_WS_INT = 0x181D
-# org.bluetooth.characteristic.weight_measurement_WS_CHAR = (UUID(0x2A9D), FLAG_READ | FLAG_NOTIFY,)
-
-# org.bluetooth.service.environmental_sensing - ES _ES_INT = 0x181A
-
             try:
+                print('Connecting to HEN')
                 conn = bluetooth.connect(adv.mac)
                 services = conn.services()
                 for service in services:
                     time.sleep(0.050)
-                    print('Service: ',service.uuid())
-                    print('Chars: ',service.characteristics())
+                    #print('Service: ',service.uuid())
+                    #print('Chars: ',service.characteristics())
+                    uuid = service.uuid()
+                    if type(uuid) == bytes:
+                        #uuid_str = UUIDbytes2UUIDstring(uuid)
+                        pass
+
                     if service.uuid() == 0x180F0: 
                         print('Battery service')
                         chars = service.characteristics()
@@ -35,14 +40,14 @@ if not bluetooth.isscanning():
                             if (char.properties() & Bluetooth.PROP_READ):
                                 print('char {} value = {}'.format(char.uuid(), char.read()))
                                 print('Battery level: ', struct.unpack('<b', char.value())[0])
-                    elif service.uuid() == 0x181D0:
+                    elif uuid == 0x181D0:
                         print('Weight scale')
                         chars = service.characteristics()
                         for char in chars:
                             if (char.properties() & Bluetooth.PROP_READ):
                                 print('char {} value = {}'.format(char.uuid(), char.read()))
                                 print('Weight: ', struct.unpack('<h', char.value())[0]*0.005)
-                    elif service.uuid() == 0x181A0:
+                    elif uuid == 0x181A0:
                         print('Environ Sensing')
                         chars = service.characteristics()
                         for char in chars:
@@ -52,7 +57,7 @@ if not bluetooth.isscanning():
                                     print('Humidity: ', struct.unpack('<h', char.value())[0]*0.01)
                                 elif char.uuid() == 0x2A6E:    # temperature
                                     print('Temperature: ', struct.unpack('<h', char.value())[0]*0.01)
-                    elif service.uuid() == '04500100-39fd-49ec-b565-b5d6dc31b6ae':
+                    elif uuid_str == '04500100-39fd-49ec-b565-b5d6dc31b6ae':
                         print('Temp gap')
                         chars = service.characteristics()
                         for char in chars:
@@ -109,3 +114,18 @@ if not bluetooth.isscanning():
             #print('ADV_128SERVICE_DATA: ',bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_128SERVICE_DATA))
             #print('ADV_MANUFACTURER_DATA: ',bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_MANUFACTURER_DATA))
             #print(adv)
+
+def uuid2bytes(uuid):
+    # https://forum.pycom.io/topic/530/working-with-uuid/2
+    import binascii
+    uuid = uuid.encode().replace(b'-', b'')
+    tmp = binascii.unhexlify(uuid)
+    return bytes(reversed(tmp))
+
+def UUIDbytes2UUIDstring(uuid):
+    '''
+    reverses the bytes of uuid and converts them to a properly formatted UUID string
+    '''
+    from ubinascii import hexlify
+    tmp = str(hexlify(bytes(reversed(uuid))))[2:34]
+    return tmp[0:8]+'-'+tmp[8:12]+'-'+tmp[12:16]+'-'+tmp[16:20]+'-'+tmp[20:32]
