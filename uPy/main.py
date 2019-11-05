@@ -2,7 +2,7 @@
 # License: GNU General Public License, Version 3
 
 import struct, time, random
-from bluetooth import BLE, UUID, FLAG_NOTIFY, FLAG_READ, FLAG_WRITE
+from ubluetooth import BLE, UUID, FLAG_NOTIFY, FLAG_READ, FLAG_WRITE
 from micropython import const
 from ble_advertising import advertising_payload
 #from terkin import logging
