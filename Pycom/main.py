@@ -23,6 +23,7 @@ if not bluetooth.isscanning():
             try:
                 print('Connecting to HEN')
                 conn = bluetooth.connect(adv.mac)
+                time.sleep(0.05)
                 services = conn.services()
                 for service in services:
                     time.sleep(0.050)
